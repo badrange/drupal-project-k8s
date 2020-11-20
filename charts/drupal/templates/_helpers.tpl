@@ -1,6 +1,18 @@
-{{- define "drupal.release_labels" -}}
+{{- define "drupal.chart" -}}
+{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- define "drupal.release_selector_labels" -}}
 app: {{ .Values.app | quote }}
 release: {{ .Release.Name }}
+{{- end }}
+
+{{- define "drupal.release_labels" -}}
+{{- include "drupal.release_selector_labels" . }}
+app.kubernetes.io/name: {{ .Values.app | quote }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+helm.sh/chart: {{ template "drupal.chart" . }}  
 {{- end }}
 
 {{- define "drupal.php-container" -}}
@@ -78,7 +90,7 @@ imagePullSecrets:
     secretKeyRef:
       name: {{ .Release.Name }}-secrets-smtp
       key: password
-# Duplicate SMTP env variables for ssmtp bundled with amazee php image 
+# Duplicate SMTP env variables for ssmtp bundled with amazee php image
 - name: SSMTP_MAILHUB
   {{- if .Values.mailhog.enabled }}
   value: "{{ .Release.Name }}-mailhog:1025"
@@ -173,9 +185,9 @@ imagePullSecrets:
 - name: HTTPS_PROXY
   value: "{{ $proxy.url }}:{{ $proxy.port }}"
 - name: no_proxy
-  value: .svc.cluster.local,{{ .Release.Name }}-es{{ if $proxy.no_proxy }},{{$proxy.no_proxy}}{{ end }}
+  value: .svc.cluster.local,{{ .Release.Name }}-es,{{ .Release.Name }}-varnish{{ if $proxy.no_proxy }},{{$proxy.no_proxy}}{{ end }}
 - name: NO_PROXY
-  value: .svc.cluster.local,{{ .Release.Name }}-es{{ if $proxy.no_proxy }},{{$proxy.no_proxy}}{{ end }}
+  value: .svc.cluster.local,{{ .Release.Name }}-es,{{ .Release.Name }}-varnish{{ if $proxy.no_proxy }},{{$proxy.no_proxy}}{{ end }}
 {{- end }}
 {{- end }}
 
@@ -279,7 +291,7 @@ done
 
   # Make backup of current deployment
   {{ include "drupal.backup-command" . }}
-  
+
   # Restore files from targeted backup
   {{ include "drupal.import-backup-files" . }}
 
@@ -353,7 +365,9 @@ if [ -f /app/reference-data/db.sql.gz ]; then
   pv /tmp/reference-data-db.sql | drush sql-cli
 
   # Clear caches before doing anything else.
-  drush cr
+  drupal_major_version=$(drush status --fields=drupal-version  | sed -nEe 's/^[^0-9]*([0-9]+).*/\1/p')
+  if [[ $drupal_major_version -eq 7 ]] ; then drush cache-clear all; 
+  else drush cache-rebuild; fi
 else
   printf "\e[33mNo reference data found, please install Drupal or import a database dump. See release information for instructions.\e[0m\n"
 fi
@@ -369,7 +383,9 @@ if [ -f /backups/{{ $.Values.backup.restoreId }}/db.sql.gz ]; then
   pv /tmp/backup-data-db.sql | drush sql-cli
 
   # Clear caches before doing anything else.
-  drush cr
+  drupal_major_version=$(drush status --fields=drupal-version  | sed -nEe 's/^[^0-9]*([0-9]+).*/\1/p')
+  if [[ $drupal_major_version -eq 7 ]] ; then drush cache-clear all; 
+  else drush cache-rebuild; fi
 else
   printf "\e[33mNo reference data found, please install Drupal or import a database dump. See release information for instructions.\e[0m\n"
 fi
@@ -401,7 +417,12 @@ fi
 {{- end }}
 
 {{- define "drupal.backup-command" -}}
-set -e
+  {{ include "drupal.backup-command.dump-database" . }}
+  {{ include "drupal.backup-command.archive-store-backup" . }}
+{{- end }}
+
+{{- define "drupal.backup-command.dump-database" -}}
+  set -e
 
   # Generate the id of the backup.
   BACKUP_ID=`date +%Y-%m-%d-%H-%M-%S`
@@ -412,7 +433,7 @@ set -e
   IGNORED_TABLES=""
   for TABLE in `drush sql-query "show tables;" | grep -E '{{ .Values.backup.ignoreTableContent }}'` ;
   do
-    IGNORE_TABLES="$IGNORE_TABLES --ignore-table='$DB_NAME.$TABLE'";
+    IGNORE_TABLES="$IGNORE_TABLES --ignore-table=$DB_NAME.$TABLE";
     IGNORED_TABLES="$IGNORED_TABLES $TABLE";
   done
 
@@ -421,11 +442,14 @@ set -e
   /usr/bin/mysqldump -u $DB_USER --password=$DB_PASS -h $DB_HOST --skip-lock-tables --single-transaction --quick $IGNORE_TABLES $DB_NAME > /tmp/db.sql
   /usr/bin/mysqldump -u $DB_USER --password=$DB_PASS -h $DB_HOST --skip-lock-tables --single-transaction --quick --force --no-data $DB_NAME $IGNORED_TABLES >> /tmp/db.sql
   echo "Database backup complete."
+{{- end }}
 
+{{- define "drupal.backup-command.archive-store-backup" -}}
+  
   # Compress the database dump and copy it into the backup folder.
   # We don't do this directly on the volume mount to avoid sending the uncompressed dump across the network.
   echo "Compressing database backup."
-  gzip -9 /tmp/db.sql
+  gzip -k9 /tmp/db.sql
 
   # Create a folder for the backup
   mkdir -p $BACKUP_LOCATION
@@ -444,4 +468,40 @@ set -e
 
   # List content of backup folder
   ls -lh /backups/*
+{{- end }}
+
+
+{{- define "mariadb.db-validation" -}}
+  set -e
+
+  # Stop DB container when exiting this shell (backup container has done its job)
+  function stop_db {
+    mysqld_pid=$(pgrep mysqld)
+    kill -TERM $mysqld_pid && echo "Killed MariaDB, PID ${mysqld_pid}"
+  }
+  trap stop_db EXIT ERR
+
+
+  export DB_USER=root 
+  export DB_PASS={{ .db_password }}
+  export DB_HOST=127.0.0.1
+  export DB_NAME=drupal
+
+  TIME_WAITING=0
+  echo "Waiting for database.";
+  until mysqladmin status --connect_timeout=2 -u $DB_USER -p$DB_PASS -h $DB_HOST --protocol=tcp --silent; do
+    echo -n "."
+    sleep 1s
+    TIME_WAITING=$((TIME_WAITING+1))
+
+    if [ $TIME_WAITING -gt 20 ]; then
+      echo "Database connection timeout"
+      exit 1
+    fi
+  done
+
+  
+  mysql -u $DB_USER -p$DB_PASS $DB_NAME -h $DB_HOST --protocol=tcp < /tmp/db.sql
+  drush status --fields=bootstrap
+
 {{- end }}

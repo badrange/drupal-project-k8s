@@ -65,9 +65,15 @@
     "exposeDomainsDefaults": { "type": "object"},
     "domainPrefixes": { "type": "array", "items": { "type": "string"}},
     "ssl": { "type": "object" },
-
     "backendConfig": { "type": ["array","object"], "items": { "type": "object"}},
-    
+    "ingress": { "type": "object" },
+    "cluster": {
+      "type": "object",
+      "properties": {
+        "vpcNative": { "type": "boolean"}
+      }
+    },
+
     "nginx": {
       "type": "object",
       "properties": {
