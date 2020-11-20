@@ -37,3 +37,22 @@ silta-release:
         - namespaceSelector:
             matchLabels:
               name: drupal-project
+
+
+exposeDomains:
+  test:
+    hostname: test.exposedomains.drupal-project-k8s.silta-test.wdr.io
+  nonssl:
+    hostname: nossl.exposedomains.drupal-project-k8s.silta-test.wdr.io
+    ingress: nossl
+  noredirect:
+    hostname: noredirect.exposedomains.drupal-project-k8s.silta-test.wdr.io
+    ingress: noredirect
+
+ingress:
+  # SSL OFF, REDIRECT: OFF
+  nossl:
+    tls: false
+  # SSL: ON, SSL REDIRECT: OFF
+  noredirect:
+    redirect-https: false
