@@ -44,6 +44,8 @@ workflows:
             - silta/npm-install-build
 
           pre-release:
+            - setup_remote_docker:
+                docker_layer_caching: true
             - run:
                 name: Build local helm chart
                 command: |
