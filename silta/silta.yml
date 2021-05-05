@@ -48,7 +48,7 @@ php:
   resources:
     requests:
       cpu: 50m
-      memory: 64M
+      memory: 96M
     limits:
       cpu: 200m
       memory: 256M
