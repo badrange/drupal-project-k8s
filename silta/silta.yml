@@ -44,22 +44,6 @@ memcached:
 php:
   nodeSelector:
     cloud.google.com/gke-nodepool: persistent
-  cron:
-    drupal:
-      schedule: '~* * * * *'
-      command: |
-        if [[ "$(drush status --fields=bootstrap)" = *'Successful'* ]] ; then
-          drush cron;
-        fi
-    nodeSelector:
-      cloud.google.com/gke-nodepool: static-ip
-    resources:
-      requests:
-        cpu: 50m
-        memory: 125M
-      limits:
-        cpu: 500m
-        memory: 250M
   # Set requested resources based on idle usage.
   resources:
     requests:
