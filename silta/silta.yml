@@ -13,27 +13,38 @@ elasticsearch:
 memcached:
   enabled: false
 
+drupal:
+  nodeSelector:
+    cloud.google.com/gke-nodepool: persistent
+
+
+cron:
+  nodeSelector:
+    cloud.google.com/gke-nodepool: static-ip
+
 mounts:
   private-files:
     enabled: true
 
-# Allow access from another namespace for testing purposes.
-silta-release:
-  proxy:
-    enabled: true
-    no_proxy: ".example.com"
-  ingressAccess:
-    test:
-      additionalPodSelector:
-        app: drupal
-      from:
-        - namespaceSelector:
-            matchLabels:
-              name: drupal-project
-    allowESaccess:
-      additionalPodSelector:
-        chart: elasticsearch
-      from:
-        - namespaceSelector:
-            matchLabels:
-              name: drupal-project
+
+
+## Allow access from another namespace for testing purposes.
+#silta-release:
+#  proxy:
+#    enabled: true
+#    no_proxy: ".example.com"
+#  ingressAccess:
+#    test:
+#      additionalPodSelector:
+#        app: drupal
+#      from:
+#        - namespaceSelector:
+#            matchLabels:
+#              name: drupal-project
+#    allowESaccess:
+#      additionalPodSelector:
+#        chart: elasticsearch
+#      from:
+#        - namespaceSelector:
+#            matchLabels:
+#              name: drupal-project
