@@ -49,9 +49,9 @@ php:
     limits:
       cpu: 500m
       memory: 512M
-#For now the project should run on persistent nodepool.
-  nodeSelector:
-    cloud.google.com/gke-nodepool: persistent
+#For now the project should run on defaylt nodepool.
+  nodeSelector: null
+ #   cloud.google.com/gke-nodepool: persistent
   cron:
   #default drupal cron running on static nodepool
     static:
