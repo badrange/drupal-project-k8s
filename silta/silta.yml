@@ -71,7 +71,7 @@ php:
           cpu: 500m
           memory: 512M
 #this cron runs on persistent
-    persistent:
+    persis:
       nodeSelector:
         cloud.google.com/gke-nodepool: persistent
       schedule: '* * * * *'
@@ -85,7 +85,9 @@ php:
           cpu: 500m
           memory: 512M
 #running on default
-    default:
+    dflt:
+      nodeSelector:
+        cloud.google.com/gke-nodepool: null
       schedule: '* * * * *'
       command: |
         echo 'Running on default nodepool'
