@@ -87,7 +87,7 @@ php:
 #running on default
     dflt:
       nodeSelector:
-        cloud.google.com/gke-nodepool: null
+        cloud.google.com/gke-nodepool: 
       schedule: '* * * * *'
       command: |
         echo 'Running on default nodepool'
