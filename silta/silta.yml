@@ -42,34 +42,60 @@ memcached:
 
 
 php:
-#  nodeSelector:
-#    cloud.google.com/gke-nodepool: persistent
-  # Set requested resources based on idle usage.
+  resources:
+    requests:
+      cpu: 5m
+      memory: 128M
+    limits:
+      cpu: 500m
+      memory: 512M
+#For now the project should run on persistent nodepool.
+  nodeSelector:
+    cloud.google.com/gke-nodepool: persistent
   cron:
-    drupal:
-      # trying out different nodepools.
-#      nodeSelector:
-#        cloud.google.com/gke-nodepool: persistent
-    cron-foobar:
+  #default drupal cron running on static nodepool
+    static:
+      nodeSelector:
+        cloud.google.com/gke-nodepool: static-ip
       schedule: '* * * * *'
       command: |
-        if [[ ! -f /app/web/sites/default/files/_installing && "$(drush status --fields=bootstrap)" = *'Successful'* ]] ; then
-          drush status;
+        if [[ "$(drush status --fields=bootstrap)" = *'Successful'* ]] ; then
+          drush cron;
+          drush cr;
         fi
       resources:
         requests:
-          cpu: 100m
-          memory: 64m
+          cpu: 5m
+          memory: 128M
         limits:
-          cpu: 200m
-          memory: 128m
-  resources:
-    requests:
-      cpu: 50m
-      memory: 96M
-    limits:
-      cpu: 200m
-      memory: 256M
+          cpu: 500m
+          memory: 512M
+#this cron runs on persistent
+    persistent:
+      nodeSelector:
+        cloud.google.com/gke-nodepool: persistent
+      schedule: '* * * * *'
+      command: |
+        echo 'Running on persistent'
+      resources:
+        requests:
+          cpu: 5m
+          memory: 128M
+        limits:
+          cpu: 500m
+          memory: 512M
+#running on default
+    default:
+      schedule: '* * * * *'
+      command: |
+        echo 'Running on default nodepool'
+      resources:
+        requests:
+          cpu: 5m
+          memory: 128M
+        limits:
+          cpu: 500m
+          memory: 512M
 
 mounts:
   private-files:
