@@ -45,6 +45,24 @@ php:
   nodeSelector:
     cloud.google.com/gke-nodepool: persistent
   # Set requested resources based on idle usage.
+  cron:
+    drupal:
+      # The default cron job doesn't need a static IP.
+      nodeSelector: static-ip
+    cron-test-event:
+      schedule: '* * * * *'
+      command: |
+        if [[ ! -f /app/web/sites/default/files/_installing && "$(drush status --fields=bootstrap)" = *'Successful'* ]] ; then
+          drush status;
+        fi
+      # command: 'drush --root=/app/web elysia-cron run'
+      resources:
+        requests:
+          cpu: 100m
+          memory: 64m
+        limits:
+          cpu: 200m
+          memory: 128m
   resources:
     requests:
       cpu: 50m
