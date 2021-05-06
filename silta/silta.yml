@@ -42,8 +42,8 @@ memcached:
 
 
 php:
-  nodeSelector:
-    cloud.google.com/gke-nodepool: persistent
+#  nodeSelector:
+#    cloud.google.com/gke-nodepool: persistent
   # Set requested resources based on idle usage.
   cron:
     drupal:
