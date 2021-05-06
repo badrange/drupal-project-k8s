@@ -48,7 +48,8 @@ php:
   cron:
     drupal:
       # The default cron job doesn't need a static IP.
-      nodeSelector: static-ip
+      nodeSelector:
+        cloud.google.com/gke-nodepool: static-ip
     cron-test-event:
       schedule: '* * * * *'
       command: |
