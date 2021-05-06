@@ -86,8 +86,7 @@ php:
           memory: 512M
 #running on default
     dflt:
-      nodeSelector:
-        cloud.google.com/gke-nodepool: 
+      nodeSelector: null
       schedule: '* * * * *'
       command: |
         echo 'Running on default nodepool'
