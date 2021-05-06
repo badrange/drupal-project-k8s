@@ -8,7 +8,7 @@ varnish:
   enabled: false
 
 elasticsearch:
-  enabled: true
+  enabled: false
 
 memcached:
   enabled: false
@@ -47,16 +47,15 @@ php:
   # Set requested resources based on idle usage.
   cron:
     drupal:
-      # The default cron job doesn't need a static IP.
+      # trying out different nodepools.
       nodeSelector:
-        cloud.google.com/gke-nodepool: static-ip
+        cloud.google.com/gke-nodepool: persistent
     cron-test-event:
       schedule: '* * * * *'
       command: |
         if [[ ! -f /app/web/sites/default/files/_installing && "$(drush status --fields=bootstrap)" = *'Successful'* ]] ; then
           drush status;
         fi
-      # command: 'drush --root=/app/web elysia-cron run'
       resources:
         requests:
           cpu: 100m
