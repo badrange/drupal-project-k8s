@@ -48,9 +48,9 @@ php:
   cron:
     drupal:
       # trying out different nodepools.
-      nodeSelector:
-        cloud.google.com/gke-nodepool: persistent
-    cron-test-event:
+#      nodeSelector:
+#        cloud.google.com/gke-nodepool: persistent
+    cron-foobar:
       schedule: '* * * * *'
       command: |
         if [[ ! -f /app/web/sites/default/files/_installing && "$(drush status --fields=bootstrap)" = *'Successful'* ]] ; then
